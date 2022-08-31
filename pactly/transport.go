@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const defaultPactlyUrl = "http://localhost:8080/events"
-
 type Transport struct {
 	Transport       http.RoundTripper
 	serverUrl       *url.URL
@@ -20,8 +18,8 @@ type Transport struct {
 	PactlyToken     string
 }
 
-func DefaultTransport(component string, token string) (*Transport, error) {
-	return CustomTransport(defaultPactlyUrl, component, token)
+func DefaultTransport(component string, token string, options *ClientOptions) (*Transport, error) {
+	return CustomTransport(options.Url, component, token)
 }
 
 func CustomTransport(pactlyUrl string, component string, token string) (*Transport, error) {
