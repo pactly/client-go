@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -48,8 +49,28 @@ func (t *Transport) RoundTrip(request *http.Request) (*http.Response, error) {
 	}
 	responseTime := time.Now()
 
+	var requestBody []byte
+	var responseBody []byte
+
+	if request.Body != nil {
+		requestBodyRaw, _ := request.GetBody()
+		requestBody, err = ioutil.ReadAll(requestBodyRaw)
+		if err != nil {
+			println(err)
+		}
+	}
+	if response.Body != nil {
+		responseBody, _ = ioutil.ReadAll(response.Body)
+		err := response.Body.Close()
+		if err != nil {
+			println(err)
+		}
+		r := bytes.NewReader(responseBody)
+		response.Body = io.NopCloser(r)
+	}
+
 	go func() {
-		err := t.logPactlyEvent(*request, *response, requestTime, responseTime)
+		err := t.logPactlyEvent(*request, requestBody, *response, responseBody, requestTime, responseTime)
 		if err != nil {
 			fmt.Printf("Failed to log pactly event: %v", err)
 		}
@@ -58,30 +79,13 @@ func (t *Transport) RoundTrip(request *http.Request) (*http.Response, error) {
 	return response, err
 }
 
-func (t *Transport) logPactlyEvent(request http.Request, response http.Response, requestTime time.Time, responseTime time.Time) error {
-	// ignore all requests to pactly for now
+func (t *Transport) logPactlyEvent(request http.Request, requestBody []byte, response http.Response, responseBody []byte, requestTime time.Time, responseTime time.Time) error {
 	if request.URL.Host == t.serverUrl.Host {
+		// ignore all requests to pactly for now
 		return nil
 	}
-	var requestBodyString = ""
-	var responseBodyString = ""
-
-	if request.Body != nil {
-		requesetBodyRaw, _ := request.GetBody()
-		requestBody, err := ioutil.ReadAll(requesetBodyRaw)
-		if err != nil {
-			print(err)
-		}
-		requestBodyString = string(requestBody)
-	}
-	if response.Body != nil {
-		responseBody, _ := ioutil.ReadAll(response.Body)
-		err := response.Body.Close()
-		if err != nil {
-			return err
-		}
-		responseBodyString = string(responseBody)
-	}
+	requestBodyString := string(requestBody)
+	responseBodyString := string(responseBody)
 
 	pactlyEvent := Event{
 		Time:            requestTime.UTC(),
