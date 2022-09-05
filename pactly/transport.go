@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -47,12 +48,20 @@ func (t *Transport) RoundTrip(request *http.Request) (*http.Response, error) {
 	}
 	responseTime := time.Now()
 
-	print(response.Status)
+	go func() {
+		err := t.logPactlyEvent(*request, *response, requestTime, responseTime)
+		if err != nil {
+			fmt.Printf("Failed to log pactly event: %v", err)
+		}
+	}()
 
-	// todo async send to pactly in goroutine?
+	return response, err
+}
+
+func (t *Transport) logPactlyEvent(request http.Request, response http.Response, requestTime time.Time, responseTime time.Time) error {
 	// ignore all requests to pactly for now
 	if request.URL.Host == t.serverUrl.Host {
-		return response, nil
+		return nil
 	}
 	var requestBodyString = ""
 	var responseBodyString = ""
@@ -69,9 +78,8 @@ func (t *Transport) RoundTrip(request *http.Request) (*http.Response, error) {
 		responseBody, _ := ioutil.ReadAll(response.Body)
 		err := response.Body.Close()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		response.Body = ioutil.NopCloser(bytes.NewBuffer(responseBody))
 		responseBodyString = string(responseBody)
 	}
 
@@ -108,7 +116,7 @@ func (t *Transport) RoundTrip(request *http.Request) (*http.Response, error) {
 		log.Fatal(err)
 	}
 	log.Println("pactly response:" + resp.Status)
-	return response, err
+	return nil
 }
 
 func (t *Transport) transport() http.RoundTripper {
