@@ -67,6 +67,11 @@ func (t *Transport) RoundTrip(request *http.Request) (*http.Response, error) {
 	}
 	if response.Body != nil {
 		responseBody, _ := ioutil.ReadAll(response.Body)
+		err := response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+		response.Body = ioutil.NopCloser(bytes.NewBuffer(responseBody))
 		responseBodyString = string(responseBody)
 	}
 
