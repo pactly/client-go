@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,13 @@ type Transport struct {
 	serverUrl       *url.URL
 	PactlyComponent string
 	PactlyToken     string
+}
+
+var pendingRequests sync.WaitGroup
+
+// AwaitPendingRequests will wait for all pending pactly requests to finish
+func AwaitPendingRequests() {
+	pendingRequests.Wait()
 }
 
 func DefaultTransport(component string, token string, options *ClientOptions) (*Transport, error) {
@@ -69,7 +77,9 @@ func (t *Transport) RoundTrip(request *http.Request) (*http.Response, error) {
 		response.Body = io.NopCloser(r)
 	}
 
+	pendingRequests.Add(1)
 	go func() {
+		defer pendingRequests.Done()
 		err := t.logPactlyEvent(*request, requestBody, *response, responseBody, requestTime, responseTime)
 		if err != nil {
 			fmt.Printf("Failed to log pactly event: %v", err)
