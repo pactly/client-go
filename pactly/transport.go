@@ -122,12 +122,12 @@ func (t *Transport) logPactlyEvent(request http.Request, requestBody []byte, res
 
 	payload, err := json.Marshal(pactlyEvent)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	resp, err := http.Post(t.serverUrl.String(), "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	log.Println("pactly response:" + resp.Status)
 	return nil

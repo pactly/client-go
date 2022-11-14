@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/google/go-github/v41/github"
 	"github.com/pactly/client-go/pactly"
 	"log"
@@ -11,14 +12,19 @@ import (
 )
 
 func main() {
-	pactly.Init("client-go-demo-component", "todo")
+	// pactly.Init("client-go-demo-component", "")
+	pactly.Init("client-go-demo-component", "todo", pactly.WithUrl("http://localhost:8080/v1/projects/630f2632cbd04aa8a64da22b/events"))
+	defer pactly.AwaitPendingRequests()
 
+	demoSift()
 	demoGet()
 	demoPost()
 	demoGithub()
 	demoGithubRaw()
 	demoRateLimit429()
 	demoGithubRateLimit()
+
+	fmt.Println("demo requests done")
 }
 
 func demoRateLimit429() {
@@ -85,4 +91,36 @@ func demoGithubRateLimit() {
 
 func demoGithubRaw() {
 	http.Get("https://api.github.com/users/octocat/orgs")
+}
+
+func demoSift() {
+	// can help to debug http2 issue
+	values := map[string]string{
+		"$api_key":           "12345",
+		"$chargeback_reason": "$fraud",
+		"$chargeback_state":  "$lost",
+		"$order_id":          "123456",
+		"$transaction_id":    "12345",
+		"$type":              "$chargeback",
+		"$user_id":           "123456",
+	}
+	payload, err := json.Marshal(values)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resp, err := http.Post("https://api.sift.com/v205/events", "application/json",
+		bytes.NewBuffer(payload))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var res map[string]interface{}
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		fmt.Printf("error decoding sift response: %v", err)
+	}
 }
