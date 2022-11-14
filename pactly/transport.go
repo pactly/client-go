@@ -82,7 +82,7 @@ func (t *Transport) RoundTrip(request *http.Request) (*http.Response, error) {
 		defer pendingRequests.Done()
 		err := t.logPactlyEvent(*request, requestBody, *response, responseBody, requestTime, responseTime)
 		if err != nil {
-			fmt.Printf("Failed to log pactly event: %v", err)
+			fmt.Printf("Failed to log pactly event: %v\n", err)
 		}
 	}()
 
@@ -122,12 +122,12 @@ func (t *Transport) logPactlyEvent(request http.Request, requestBody []byte, res
 
 	payload, err := json.Marshal(pactlyEvent)
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 
 	resp, err := http.Post(t.serverUrl.String(), "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 	log.Println("pactly response:" + resp.Status)
 	return nil
